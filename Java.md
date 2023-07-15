@@ -65,7 +65,7 @@ Java 语言提供了八种基本类型。六种数字类型（四个整数型，
 - 最小值是 -9,223,372,036,854,775,808（-2^63）、最大值是 9,223,372,036,854,775,807（2^63 -1）
 - 这种类型主要使用在需要比较大整数的系统上
 - 默认值是 ` 0L`
-- 例子： `long a = 100000L，Long b = -200000L`，L 理论上不分大小写，但是若写成 I 容易与数字 1 混淆，不容易分辩
+- 例子： `long a = 100000L，Long b = -200000L`，L 理论上不分大小写，但是若写成 l 容易与数字 1 混淆，不容易分辩
 
 **float：**
 
@@ -806,12 +806,12 @@ public class MethodDemo {
 
 
 
-##### 继承重载
+##### 继承和重载
 
 除了同一个类中的方法，重载也可以作用于这个类所继承而来的方法。如果子类定义了与父类中**非私有方法**同名的方法，而且这两个方法的参数类型不同，那么在子类中，这两个方法同样构成了重载
 
-* 如果这两个方法都是静态的，那么子类中的方法隐藏了父类中的方法
-* 如果这两个方法都不是静态的，且都不是私有的，那么子类的方法重写了父类中的方法，也就是**多态**
+* 当父类和子类同时定义了同名的静态方法时，实际上是发生了"隐藏"（hiding）的现象。不会去调用父类中的静态方法。
+* 如果**参数类型相同**并且这两个方法都不是静态的，且都不是私有的，那么子类的方法重写了父类中的方法，也就是**多态
 
 
 
@@ -1279,7 +1279,7 @@ class Animal{
 ```java
 public class ExtendsDemo {
     public static void wmain(String[] args) {
-        Wolf w = new Wolf();w
+        Wolf w = new Wolf();
         w.showName();
     }
 }
@@ -1476,7 +1476,7 @@ final 用于修饰：类，方法，变量
 
 * final 修饰类，类不能被继承了，类中的方法和变量可以使用
 * final 可以修饰方法，方法就不能被重写
-* final 修饰变量总规则：变量有且仅能被赋值一次
+* final 修饰变量总规则：变量有且仅能被赋值一次，变量变成了常量
 
 final 和 abstract 的关系是**互斥关系**，不能同时修饰类或者同时修饰方法
 
@@ -2063,6 +2063,7 @@ static class Outter{
 
 * 实例内部类中可以直接访问外部类的静态成员，外部类的静态成员可以被共享访问
 * 实例内部类中可以访问外部类的实例成员，实例内部类属于外部类对象，可以直接访问外部类对象的实例成员
+* 外部类无法直接访问实例内部类，需要创建实例内部类对象才能访问
 
 
 
@@ -2273,7 +2274,7 @@ public class CodeDemo {
 
 #### 基本介绍
 
-Object 类是 Java 中的祖宗类，一个类或者默认继承 Object 类，或者间接继承 Object 类，Object 类的方法是一切子类都可以直接使用
+Object 类是 Java 中的祖宗类，一个类默认继承 Object 类，或者间接继承 Object 类，Object 类的方法是一切子类都可以直接使用
 
 Object 类常用方法：
 
@@ -2318,7 +2319,7 @@ hashCode 的作用：
 
 #### 深浅克隆
 
-Object 的 clone() 是 protected 方法，一个类不显式去重写 clone()，就不能直接去调用该类实例的 clone() 方法
+Object 的 clone() 是 protected 方法，一个类不显式去重写 clone()，就不能直接去调用该类实例的 clone() 方法，并且需要实现 Cloneable 接口
 
 深浅拷贝（克隆）的概念：
 
@@ -2495,7 +2496,7 @@ s.replace("-","");//12378
 `String str = new String("abc")` 创建字符串对象：
 
 * 创建一个对象：字符串池中已经存在 abc 对象，那么直接在创建一个对象放入堆中，返回堆内引用
-* 创建两个对象：字符串池中未找到 abc 对象，那么分别在堆中和字符串池中创建一个对象，字符串池中的比较都是采用 equals() 
+* 创建两个对象：字符串池中未找到 abc 对象，那么分别在堆中和字符串池中创建一个对象，字符串池中的比较都是采用 equals()，同时返回堆内引用
   <img src="https://img.jiapeng.store/img/202307081655961.png" style="zoom: 67%;" />
 
 `new String("a") + new String("b")` 创建字符串对象：
@@ -2587,9 +2588,9 @@ public class Demo {
 
 ```java
 String s1 = "ab";								// 仅放入串池
-String s2 = new String("a") + new String("b");	// 仅放入堆
+String s2 = new String("a") + new String("b");	// 仅放入堆，
 // 上面两条指令的结果和下面的 效果 相同
-String s = new String("ab");
+String s = new String("ab"); // 同时放入堆和串池
 ```
 
 
@@ -2781,9 +2782,10 @@ String StringBuffer 和 StringBuilder 区别：
 
 ```java
 String str = "abc";
-char data[] = {'a', 'b', 'c'};
-StringBuffer sb1 = new StringBuffer();//new byte[16] 
-sb1.append('a'); //value[0] = 'a';
+public StringBuffer(String str) {
+        super(str.length() + 16);
+        append(str);
+}
 ```
 
 append 源码：扩容为二倍
@@ -3181,19 +3183,19 @@ public class MathDemo {
 
 ```java
 public static void main(String[]args){
-    double pi = 3.1415927;　//圆周率
+    double pi = 3.1415927; //圆周率
     //取一位整数
-    System.out.println(new DecimalFormat("0").format(pi));　　　//3
+    System.out.println(new DecimalFormat("0").format(pi)); //3
     //取一位整数和两位小数
-    System.out.println(new DecimalFormat("0.00").format(pi));　//3.14
+    System.out.println(new DecimalFormat("0.00").format(pi)); //3.14
     //取两位整数和三位小数，整数不足部分以0填补。
-    System.out.println(new DecimalFormat("00.000").format(pi));// 03.142
+    System.out.println(new DecimalFormat("00.000").format(pi)); //03.142
     //取所有整数部分
-    System.out.println(new DecimalFormat("#").format(pi));　　　//3
+    System.out.println(new DecimalFormat("#").format(pi)); //3
     //以百分比方式计数，并取两位小数
-    System.out.println(new DecimalFormat("#.##%").format(pi));　//314.16%
+    System.out.println(new DecimalFormat("#.##%").format(pi)); //314.16%
 
-    long c =299792458;　　//光速
+    long c =299792458; //光速
     //显示为科学计数法，并取五位小数
     System.out.println(new DecimalFormat("#.#####E0").format(c));//2.99792E8
     //显示为两位整数的科学计数法，并取四位小数
@@ -5867,7 +5869,7 @@ public class GenericDemo {
         run(bmws);
         //run(dogs);
     }
-    //public static void run(ArrayList<?> car){}//这样 dou对象也能进入
+    //public static void run(ArrayList<?> car){}//这样 Dog对象也能进入
     public static void run(ArrayList<? extends Car> car){}
 }
 
@@ -7706,9 +7708,9 @@ System 类：
 ```java
 public class PrintStreamDemo01 {
     public static void main(String[] args) throws Exception {
-        PrintStream ps = new  PrintStream("Demo/src/test.txt");
-        ps.println(任何类型的数据);
-        ps.print(不换行);
+        PrintStream ps = new PrintStream("./test.txt");
+        ps.println("任何类型的数据");
+        ps.print("不换行");
         ps.write("我爱你".getBytes());
         ps.close();
     }
@@ -7716,10 +7718,10 @@ public class PrintStreamDemo01 {
 public class PrintStreamDemo02 {
     public static void main(String[] args) throws Exception {
         System.out.println("==seazean0==");
-        PrintStream ps = new PrintStream("Demo/src/log.txt");
+        PrintStream ps = new PrintStream("./log.txt");
         System.setOut(ps); // 让系统的输出流向打印流
 		//不输出在控制台，输出到文件里
-        System.out.println("==seazean1==");
+        System.out.print("==seazean1==");
         System.out.println("==seazean2==");
     }
 }
@@ -7752,9 +7754,9 @@ try(
 ```java
 try(
 	/** （1）创建一个字节输入流管道与源文件接通。 */
-	InputStream is  = new FileInputStream("D:\\seazean\\图片资源\\meinv.jpg");
+	InputStream is  = new FileOutputStream("C:\\Users\\Administrator\\Desktop\\images\\1.png");
 	/** （2）创建一个字节输出流与目标文件接通。*/
-	OutputStream os = new FileOutputStream("D:\\seazean\\meimei.jpg");
+	OutputStream os = new FileOutputStream("C:\\Users\\Administrator\\Desktop\\images\\2.png");
 	/** （5）关闭资源！是自动进行的 */
 ){
 	byte[] buffer = new byte[1024];
@@ -8579,7 +8581,7 @@ public class AnnotationDemo{
         // 2.判断这个类上是否使用了某个注解
         if(c.isAnnotationPresent(Book.class)){
             // 3.获取这个注解对象
-            Book b = (Book)c.getDeclarAnnotation(Book.class);
+            Book book = (Book)c.getDeclaredAnnotation(Book.class);
             System.out.println(book.value());
             System.out.println(book.price());
             System.out.println(Arrays.toString(book.authors()));
@@ -8591,7 +8593,7 @@ public class AnnotationDemo{
         Method run = c.getDeclaredMethod("run");
         if(run.isAnnotationPresent(Book.class)){
             Book b = (Book)run.getDeclaredAnnotation(Book.class);
-           	sout(上面的三个);
+            System.out.println(b);
         }
     }
 }
@@ -9267,7 +9269,7 @@ public class XPathDemo {
       
       // 解决序列化问题
       protected Object readResolve() {
-      	return INSTANCE;
+      	return instance;
       }
   }
   ```
@@ -9286,7 +9288,7 @@ public class XPathDemo {
 
   * 静态变量初始化在类加载时完成，**由 JVM 保证线程安全**，能保证单例对象创建时的安全
 
-  * 提供静态方法而不是直接将 INSTANCE 设置为 public，体现了更好的封装性、提供泛型支持、可以改进成懒汉单例设计
+  * 提供静态方法而不是直接将 instance 设置为 public，体现了更好的封装性、提供泛型支持、可以改进成懒汉单例设计
 
 * 静态代码块的方式：
 
@@ -9372,6 +9374,14 @@ public class XPathDemo {
 
   在多线程的情况下，可能会出现空指针问题，出现问题的原因是 JVM 在实例化对象的时候会进行优化和指令重排序操作，所以需要使用 `volatile` 关键字
 
+  当一个线程执行到 `instance = new Singleton()` 这一行时，实例化 `Singleton` 对象的过程可以分为以下几个步骤：
+
+  1. 为 `instance` 分配内存空间。
+  2. 调用 `Singleton` 的构造方法进行初始化。
+  3. 将 `instance` 指向分配的内存空间。
+
+  然而，由于指令重排序的优化，在多线程环境下，步骤 2 和步骤 3 可能会被重排序，即先执行步骤 3 再执行步骤 2。这样，在某个线程执行到 `instance = new Singleton()` 之后，其他线程可能会看到 `instance` 不为 `null`，但实际上对象的初始化尚未完成，导致访问到不完整的对象。
+
   ```java
   public class Singleton { 
       // 私有构造方法
@@ -9456,14 +9466,13 @@ public class XPathDemo {
           //writeObject2File();
           //从文件中读取对象
           Singleton s1 = readObjectFromFile();
-          Singleton s2 = readObjectFromFile();
           //判断两个反序列化后的对象是否是同一个对象
           System.out.println(s1 == s2);
       }
   
       private static Singleton readObjectFromFile() throws Exception {
           //创建对象输入流对象
-          ObjectInputStream ois = new ObjectInputStream(new FileInputStream("C://a.txt"));
+          ObjectInputStream ois = new ObjectInputStream(new FileInputStream("./a.txt"));
           //第一个读取Singleton对象
           Singleton instance = (Singleton) ois.readObject();
           return instance;
@@ -9473,7 +9482,7 @@ public class XPathDemo {
           //获取Singleton类的对象
           Singleton instance = Singleton.getInstance();
           //创建对象输出流
-          ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream("C://a.txt"));
+          ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream("./a.txt"));
           //将instance对象写出到文件中
           oos.writeObject(instance);
       }
@@ -10043,5 +10052,4 @@ CGLIB 的优缺点
 * 防火墙（Firewall）代理：当你将浏览器配置成使用代理功能时，防火墙就将你的浏览器的请求转给互联网，当互联网返回响应时，代理服务器再把它转给你的浏览器
 
 * 保护（Protect or Access）代理：控制对一个对象的访问，如果需要，可以给不同的用户提供不同级别的使用权限
-
 
