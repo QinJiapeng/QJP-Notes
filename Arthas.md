@@ -484,13 +484,13 @@ pwd: Print Work Directory 打印当前工作目录
 
 ### 小结
 
-| 基础命令 | 作用 |
-| -------- | ---- |
-|          |      |
-|          |      |
-|          |      |
-|          |      |
-|          |      |
+| 基础命令 | 作用                                        |
+| -------- | ------------------------------------------- |
+| help     | 显示所有arthast命令帮助信息                 |
+| cat      | 显示文件的内容，可以使用相对路径和绝对路径  |
+| grep     | 用来过滤一些信息，只保留我们关心的信息<br/> |
+| pwd      | 打印当前工作路径                            |
+| cls      | 清屏                                        |
 
 
 
@@ -1900,6 +1900,33 @@ Started [cpu] profiling
 
 ```
 $ profiler list
+Basic events:
+  cpu
+  alloc
+  lock
+  wall
+  itimer
+Java method calls:
+  ClassName.methodName
+Perf events:
+  page-faults
+  context-switches
+  cycles
+  instructions
+  cache-references
+  cache-misses
+  branch-instructions
+  branch-misses
+  bus-cycles
+  L1-dcache-load-misses
+  LLC-load-misses
+  dTLB-load-misses
+  rNNN
+  pmu/event-descriptor/
+  mem:breakpoint
+  trace:tracepoint
+  kprobe:func
+  uprobe:path
 ```
 
 #### 获取已采集的sample的数量
@@ -1960,7 +1987,7 @@ OK
 
 ![image-20200322095504907](https://img.jiapeng.store/img/202308051417296.png)
 
-
+![image-20230806131956095](https://img.jiapeng.store/img/202308061319198.png)
 
 #### 火焰图的含义
 
@@ -1972,7 +1999,10 @@ OK
 >
 > **火焰图就是看顶层的哪个函数占据的宽度最大。只要有"平顶"（plateaus），就表示该函数可能存在性能问题。**
 >
-> 颜色没有特殊含义，因为火焰图表示的是 CPU 的繁忙程度，所以一般选择暖色调。
+> - 绿色：Java代码
+> - 黄色：JVM，C++代码
+> - 红色：用户态，C代码
+> - 橙色：内核态，C代码
 
 
 
