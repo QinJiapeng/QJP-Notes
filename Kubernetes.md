@@ -175,33 +175,36 @@ kubeadm 是官方社区推出的一个用于快速部署kubernetes 集群的工�
 
 ![image-20210609000002940](https://img.jiapeng.store/img/202307082112597.png)
 
-| 角色         | IP地址      | 组件                              |
-| :----------- | :---------- | :-------------------------------- |
-| k8s-master01 | 192.168.5.3 | docker，kubectl，kubeadm，kubelet |
-| k8s-node01   | 192.168.5.4 | docker，kubectl，kubeadm，kubelet |
-| k8s-node02   | 192.168.5.5 | docker，kubectl，kubeadm，kubelet |
+| 角色       | IP地址          | 组件                              |
+| :--------- | :-------------- | :-------------------------------- |
+| k8s-master | 192.168.144.131 | docker，kubectl，kubeadm，kubelet |
+| k8s-node1  | 192.168.144.129 | docker，kubectl，kubeadm，kubelet |
+| k8s-node2  | 192.168.144.130 | docker，kubectl，kubeadm，kubelet |
 
 ## 2.6 系统初始化
 
-### 2.6.1 设置系统主机名以及 Host 文件的相互解析
+### 2.6.1 设置系统主机名以及Host 文件的相互解析
 
 ```shell
-hostnamectl set-hostname k8s-master01 && bash
-hostnamectl set-hostname k8s-node01 && bash
-hostnamectl set-hostname k8s-node02 && bash
+# 查看linux内核版本是否>=7.5
+# CentOS Linux release 7.5.1804 (Core)
+cat /etc/redhat-release
 ```
 
 ```shell
+# 设置系统主机名
+hostnamectl set-hostname master && bash
+hostnamectl set-hostname node1 && bash
+hostnamectl set-hostname node2 && bash
+```
+
+```shell
+# 配置域名映射
 cat <<EOF>> /etc/hosts
-192.168.5.3     k8s-master01
-192.168.5.4     k8s-node01
-192.168.5.5     k8s-node02
+192.168.144.131     master
+192.168.144.129     node1
+192.168.144.130     node2
 EOF
-```
-
-```shell
-scp /etc/hosts root@192.168.5.4:/etc/hosts 
-scp /etc/hosts root@192.168.5.5:/etc/hosts 
 ```
 
 ### 2.6.2 安装依赖文件（所有节点都要操作）
@@ -218,17 +221,19 @@ systemctl stop firewalld && systemctl disable firewalld
 yum -y install iptables-services && systemctl start iptables && systemctl enable iptables && iptables -F && service iptables save
 ```
 
-### 2.6.4 关闭 SELINUX（所有节点都要操作）
+### 2.6.4 关闭交换分区 swap 和 SELINUX（所有节点都要操作）
 
 ```shell
+# 关闭交换分区，因为内存不足时会使用磁盘，会影响性能，所以关掉。
 swapoff -a && sed -i '/ swap / s/^\(.*\)$/#\1/g' /etc/fstab
-
+# 关闭 SELINUX
 setenforce 0 && sed -i 's/^SELINUX=.*/SELINUX=disabled/' /etc/selinux/config
 ```
 
 ### 2.6.5 调整内核参数，对于 K8S（所有节点都要操作）
 
 ```shell
+# 加载 Linux 内核中的 br_netfilter 桥接功能模块
 modprobe br_netfilter
 
 cat <<EOF> kubernetes.conf 
@@ -248,13 +253,21 @@ net.netfilter.nf_conntrack_max=2310720
 EOF
 
 cp kubernetes.conf /etc/sysctl.d/kubernetes.conf
-
+# 加载内核中网络连接跟踪的核心模块
+modprobe nf_conntrack
+# 修改内核运行时的参数和设置
 sysctl -p /etc/sysctl.d/kubernetes.conf
+# 查看模块是否加载成功
+lsmod | grep br_netfilter
 ```
 
 ### 2.6.6 调整系统时区（所有节点都要操作）
 
 ```shell
+# 同步系统时间
+systemctl start chronyd
+systemctl enable chronyd
+date
 # 设置系统时区为 中国/上海
 timedatectl set-timezone Asia/Shanghai
 # 将当前的 UTC 时间写入硬件时钟
@@ -264,43 +277,12 @@ systemctl restart rsyslog
 systemctl restart crond
 ```
 
-### 2.6.7 设置 rsyslogd 和 systemd journald（所有节点都要操作）
+### 2.6.7 kube-proxy开启ipvs的前置条件（所有节点都要操作）
 
 ```shell
-# 持久化保存日志的目录
-mkdir /var/log/journal 
-mkdir /etc/systemd/journald.conf.d
-cat > /etc/systemd/journald.conf.d/99-prophet.conf <<EOF
-[Journal]
-# 持久化保存到磁盘
-Storage=persistent
+# 安装ipvs
+yum install ipset ipvsadmin -y
 
-# 压缩历史日志
-Compress=yes
-
-SyncIntervalSec=5m
-RateLimitInterval=30s
-RateLimitBurst=1000
-
-# 最大占用空间 10G
-SystemMaxUse=10G
-
-# 单日志文件最大 200M
-SystemMaxFileSize=200M
-
-# 日志保存时间 2 周
-MaxRetentionSec=2week
-
-# 不将日志转发到 syslog
-ForwardToSyslog=no
-EOF
-
-systemctl restart systemd-journald
-```
-
-### 2.6.8 kube-proxy开启ipvs的前置条件（所有节点都要操作）
-
-```shell
 cat <<EOF> /etc/sysconfig/modules/ipvs.modules 
 #!/bin/bash
 modprobe -- ip_vs
@@ -311,6 +293,12 @@ modprobe -- nf_conntrack_ipv4
 EOF
 
 chmod 755 /etc/sysconfig/modules/ipvs.modules && bash /etc/sysconfig/modules/ipvs.modules && lsmod | grep -e ip_vs -e nf_conntrack_ipv4
+```
+
+### 2.6.8 重新启动服务器
+
+```shell
+reboot
 ```
 
 ### 2.6.9 安装 Docker 软件（所有节点都要操作）
@@ -327,86 +315,12 @@ mkdir /etc/docker
 
 cat > /etc/docker/daemon.json <<EOF
 {
-"exec-opts": ["native.cgroupdriver=systemd"],
-"log-driver": "json-file",
-"log-opts": {
-"max-size": "100m"
-}
+  "registry-mirrors": ["https://docker.mirrors.ustc.edu.cn"]
 }
 EOF
-mkdir -p /etc/systemd/system/docker.service.d
 # 重启docker服务
 systemctl daemon-reload && systemctl restart docker && systemctl enable docker
 ```
-上传文件到``` /etc/yum.repos.d/ ```目录下，也可以 代替 ``` yum-config-manager --add-repo http://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo ``` 命令
-
-docker-ce.repo
-
-```shell
-[docker-ce-stable]
-name=Docker CE Stable - $basearch
-baseurl=https://mirrors.aliyun.com/docker-ce/linux/centos/$releasever/$basearch/stable
-enabled=1
-gpgcheck=1
-gpgkey=https://mirrors.aliyun.com/docker-ce/linux/centos/gpg
-
-[docker-ce-stable-debuginfo]
-name=Docker CE Stable - Debuginfo $basearch
-baseurl=https://mirrors.aliyun.com/docker-ce/linux/centos/$releasever/debug-$basearch/stable
-enabled=0
-gpgcheck=1
-gpgkey=https://mirrors.aliyun.com/docker-ce/linux/centos/gpg
-
-[docker-ce-stable-source]
-name=Docker CE Stable - Sources
-baseurl=https://mirrors.aliyun.com/docker-ce/linux/centos/$releasever/source/stable
-enabled=0
-gpgcheck=1
-gpgkey=https://mirrors.aliyun.com/docker-ce/linux/centos/gpg
-
-[docker-ce-test]
-name=Docker CE Test - $basearch
-baseurl=https://mirrors.aliyun.com/docker-ce/linux/centos/$releasever/$basearch/test
-enabled=0
-gpgcheck=1
-gpgkey=https://mirrors.aliyun.com/docker-ce/linux/centos/gpg
-
-[docker-ce-test-debuginfo]
-name=Docker CE Test - Debuginfo $basearch
-baseurl=https://mirrors.aliyun.com/docker-ce/linux/centos/$releasever/debug-$basearch/test
-enabled=0
-gpgcheck=1
-gpgkey=https://mirrors.aliyun.com/docker-ce/linux/centos/gpg
-
-[docker-ce-test-source]
-name=Docker CE Test - Sources
-baseurl=https://mirrors.aliyun.com/docker-ce/linux/centos/$releasever/source/test
-enabled=0
-gpgcheck=1
-gpgkey=https://mirrors.aliyun.com/docker-ce/linux/centos/gpg
-
-[docker-ce-nightly]
-name=Docker CE Nightly - $basearch
-baseurl=https://mirrors.aliyun.com/docker-ce/linux/centos/$releasever/$basearch/nightly
-enabled=0
-gpgcheck=1
-gpgkey=https://mirrors.aliyun.com/docker-ce/linux/centos/gpg
-
-[docker-ce-nightly-debuginfo]
-name=Docker CE Nightly - Debuginfo $basearch
-baseurl=https://mirrors.aliyun.com/docker-ce/linux/centos/$releasever/debug-$basearch/nightly
-enabled=0
-gpgcheck=1
-gpgkey=https://mirrors.aliyun.com/docker-ce/linux/centos/gpg
-
-[docker-ce-nightly-source]
-name=Docker CE Nightly - Sources
-baseurl=https://mirrors.aliyun.com/docker-ce/linux/centos/$releasever/source/nightly
-enabled=0
-gpgcheck=1
-gpgkey=https://mirrors.aliyun.com/docker-ce/linux/centos/gpg
-```
-
 ### 2.6.10 安装 Kubeadm （所有节点都要操作）
 
 ```shell
@@ -421,15 +335,51 @@ gpgkey=http://mirrors.aliyun.com/kubernetes/yum/doc/yum-key.gpg
 http://mirrors.aliyun.com/kubernetes/yum/doc/rpm-package-key.gpg
 EOF
 
-yum install -y kubelet kubeadm kubectl && systemctl enable kubelet
+# 配置kubelet的cgroup
+# 编辑/etc/sysconfig/kubelet,添加下面的配置
+vim /etc/sysconfig/kubelet
+KUBELET_CGROUP_ARGS="--cgroup-driver=systemd"
+KUBE_PROXY_MODE="ipvs"
+
+# 下载指定版本并且设置开机自启
+yum install --setopt=obsoletes=0 kubeadm-1.27.4-0 kubelet-1.27.4-0 kubectl-1.27.4-0 -y && systemctl enable kubelet
 ```
 
 ## 2.7 部署Kubernetes Master
 
-### 2.7.1 初始化主节点（主节点操作）
+### 2.7.1 下载各个机器需要的镜像
 
 ```shell
-kubeadm init --apiserver-advertise-address=192.168.5.3 --image-repository registry.aliyuncs.com/google_containers --kubernetes-version v1.21.1 --service-cidr=10.96.0.0/12 --pod-network-cidr=10.244.0.0/16
+# 查看有哪些镜像可以下载
+kubeadm config images list
+```
+
+```shell
+sudo tee ./images.sh <<-'EOF'
+#!/bin/bash
+images=(
+kube-apiserver:v1.27.4
+kube-controller-manager:v1.27.4
+kube-scheduler:v1.27.4
+kube-proxy:v1.27.4
+pause:3.9
+etcd:3.5.7-0
+coredns:v1.10.1
+)
+for imageName in ${images[@]} ; do
+docker pull registry.cn-hangzhou.aliyuncs.com/google_containers/$imageName
+docker tag registry.cn-hangzhou.aliyuncs.com/google_containers/$imageName k8s.gcr.io/$imageName
+docker rmi registry.cn-hangzhou.aliyuncs.com/google_containers/$imageName
+done
+EOF
+   
+chmod +x ./images.sh && ./images.sh
+```
+
+### 2.7.2 初始化主节点（主节点操作）
+
+```shell
+kubeadm init --apiserver-advertise-address=192.168.144.131 --image-repository registry.aliyuncs.com/google_containers --kubernetes-version v1.27.4 --service-cidr=10.96.0.0/12 --pod-network-cidr=10.244.0.0/16
 
 mkdir -p $HOME/.kube
 
@@ -438,14 +388,20 @@ sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
 sudo chown $(id -u):$(id -g) $HOME/.kube/config
 ```
 
-### 2.7.2 加入主节点以及其余工作节点
+```shell
+# 初始化失败或者报错运行下面指令
+rm -rf /etc/containerd/config.toml
+systemctl restart containerd
+```
+
+### 2.7.3 加入主节点以及其余工作节点
 
 ```shell
 kubeadm join 192.168.5.3:6443 --token h0uelc.l46qp29nxscke7f7 \
         --discovery-token-ca-cert-hash sha256:abc807778e24bff73362ceeb783cc7f6feec96f20b4fd707c3f8e8312294e28f 
 ```
 
-### 2.7.3 部署网络
+### 2.7.4 部署网络
 
 ```shell
 kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
