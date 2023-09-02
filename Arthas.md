@@ -31,7 +31,7 @@
 ```
 curl -O https://alibaba.github.io/arthas/arthas-boot.jar
 java -jar arthas-boot.jar
-# 补充，如果yum安装的是jre，需要下载jd工具
+# 补充，如果yum安装的是jre，需要下载jdk工具
 sudo yum install java-devel
 ```
 
