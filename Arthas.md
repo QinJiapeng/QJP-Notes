@@ -22,8 +22,6 @@
 
 `Arthas`支持JDK 6+，支持Linux/Mac/Windows，采用命令行交互模式，同时提供丰富的 `Tab` 自动补全功能，进一步方便进行问题的定位和诊断。
 
-
-
 ## 快速安装
 
 下载`arthas-boot.jar`，然后用`java -jar`的方式启动：
@@ -33,6 +31,8 @@
 ```
 curl -O https://alibaba.github.io/arthas/arthas-boot.jar
 java -jar arthas-boot.jar
+# 补充，如果yum安装的是jre，需要下载jd工具
+sudo yum install java-devel
 ```
 
 注：在运行第2条命令之前，先运行一个java进程在内存中，不然会出现找不到java进程的错误。
